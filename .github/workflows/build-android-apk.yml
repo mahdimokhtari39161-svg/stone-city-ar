@@ -77,14 +77,22 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import xml.etree.ElementTree as ET
           p = Path("android/app/src/main/AndroidManifest.xml")
-          s = p.read_text()
-          pos = s.find('>')
-          if pos < 0:
-              raise SystemExit("AndroidManifest.xml is malformed")
-          if 'android.permission.CAMERA' not in s:
-              s = s[:pos+1] + '\n    <uses-permission android:name="android.permission.CAMERA" />' + s[pos+1:]
-          p.write_text(s)
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+          tree = ET.parse(p)
+          root = tree.getroot()
+          tag = "uses-permission"
+          attr = "{http://schemas.android.com/apk/res/android}name"
+          if not any(e.tag == tag and e.get(attr) == "android.permission.CAMERA" for e in root):
+              permission = ET.Element(tag)
+              permission.set(attr, "android.permission.CAMERA")
+              app = root.find("application")
+              if app is None:
+                  root.append(permission)
+              else:
+                  root.insert(list(root).index(app), permission)
+          tree.write(p, encoding="utf-8", xml_declaration=True)
           PY
 
       - name: Build debug APK
