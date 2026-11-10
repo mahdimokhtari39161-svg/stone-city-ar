@@ -1,4 +1,5 @@
 name: Build Stone City Android APK
+# Camera permission is inserted inside the manifest root element.
 
 on:
   workflow_dispatch:
