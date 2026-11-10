@@ -79,7 +79,7 @@ jobs:
           npm install --no-save sharp
           node --input-type=module <<'NODE'
           import sharp from 'sharp';
-          import { mkdir } from 'node:fs/promises';
+          import { mkdir, writeFile } from 'node:fs/promises';
           const svg = 'icons/app-icon.svg';
           const densities = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
           for (const [density, size] of Object.entries(densities)) {
@@ -87,17 +87,26 @@ jobs:
             await mkdir(dir, { recursive: true });
             await sharp(svg).resize(size, size).png().toFile(`${dir}/ic_launcher.png`);
             await sharp(svg).resize(size, size).png().toFile(`${dir}/ic_launcher_round.png`);
+            const foregroundSize = Math.round(size * 0.76);
+            const foreground = await sharp(svg).resize(foregroundSize, foregroundSize).png().toBuffer();
+            await sharp({ create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+              .composite([{ input: foreground, gravity: 'center' }])
+              .png().toFile(`${dir}/ic_launcher_foreground.png`);
           }
-          NODE
-          mkdir -p android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/values
-          cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
+          const valuesDir = 'android/app/src/main/res/values';
+          await mkdir(valuesDir, { recursive: true });
+          await writeFile(`${valuesDir}/launcher_colors.xml`,
+            '<?xml version="1.0" encoding="utf-8"?>\\n<resources><color name="launcher_background">#10264C</color></resources>\\n');
+          const adaptive = `<?xml version="1.0" encoding="utf-8"?>
           <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-              <background android:drawable="@android:color/black" />
-              <foreground android:drawable="@mipmap/ic_launcher" />
-          </adaptive-icon>
-          EOF
-          cp android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+              <background android:drawable="@color/launcher_background" />
+              <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+          </adaptive-icon>`;
+          const adaptiveDir = 'android/app/src/main/res/mipmap-anydpi-v26';
+          await mkdir(adaptiveDir, { recursive: true });
+          await writeFile(`${adaptiveDir}/ic_launcher.xml`, adaptive);
+          await writeFile(`${adaptiveDir}/ic_launcher_round.xml`, adaptive);
+          NODE
 
       - name: Add camera permission
         run: |
@@ -118,6 +127,11 @@ jobs:
                   root.append(permission)
               else:
                   root.insert(list(root).index(app), permission)
+          app = root.find("application")
+          if app is None:
+              raise SystemExit("AndroidManifest.xml has no application element")
+          app.set("{http://schemas.android.com/apk/res/android}icon", "@mipmap/ic_launcher")
+          app.set("{http://schemas.android.com/apk/res/android}roundIcon", "@mipmap/ic_launcher_round")
           tree.write(p, encoding="utf-8", xml_declaration=True)
           PY
 
