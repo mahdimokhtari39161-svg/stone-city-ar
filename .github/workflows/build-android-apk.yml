@@ -1,0 +1,93 @@
+name: Build Stone City Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'manifest.webmanifest'
+      - 'sw.js'
+      - 'icons/**'
+      - '.github/workflows/build-android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build installable Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Prepare offline web app
+        run: |
+          mkdir -p www
+          cp index.html manifest.webmanifest sw.js www/
+          cp -R icons www/icons
+
+      - name: Install Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core@^7 @capacitor/android@^7 @capacitor/cli@^7
+
+      - name: Configure native Android app
+        run: |
+          cat > capacitor.config.json <<'EOF'
+          {
+            "appId": "com.stonecity.ar",
+            "appName": "Stone City AR",
+            "webDir": "www",
+            "bundledWebRuntime": false,
+            "android": {
+              "allowMixedContent": false
+            }
+          }
+          EOF
+          npx cap add android
+          npx cap sync android
+
+      - name: Add camera permission
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          marker = '<manifest'
+          pos = s.find('>')
+          if pos < 0:
+              raise SystemExit("AndroidManifest.xml is malformed")
+          if 'android.permission.CAMERA' not in s:
+              s = s[:pos+1] + '\n    <uses-permission android:name="android.permission.CAMERA" />' + s[pos+1:]
+          p.write_text(s)
+          PY
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+
+      - name: Publish APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Stone-City-AR-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
