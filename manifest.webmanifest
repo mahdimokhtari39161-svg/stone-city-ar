@@ -1,0 +1,21 @@
+{
+  "name": "Stone City AR | طراحی نما و شهرسازی",
+  "short_name": "Stone City AR",
+  "description": "استودیوی طراحی سه‌بعدی نمای سنگی، شهرسازی و پیش‌نمایش واقعیت افزوده با دوربین",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#15171b",
+  "theme_color": "#24272b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icons/stonecity.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
