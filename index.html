@@ -3676,28 +3676,46 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 
 
-<!-- Stone Master: open the standalone game page; avoids document.write/black screen -->
+<!-- Stone Master integration: route the ORIGINAL game entry to the standalone page -->
 <script id="sfd-stone-master-integration">
 (function(){
   'use strict';
-  function openGame(){ window.location.href = './stone-master.html'; }
-  function addButton(parent, after, id, label, title){
-    if(!parent || document.getElementById(id)) return;
-    var b=document.createElement('button');
-    b.id=id; b.type='button'; b.textContent=label; b.title=title;
-    b.addEventListener('click',openGame);
-    if(after && after.parentNode===parent) parent.insertBefore(b,after.nextSibling);
-    else parent.appendChild(b);
+  function openGame(e){
+    if(e){e.preventDefault();e.stopPropagation();}
+    window.location.assign(new URL('stone-master.html', document.baseURI).href);
   }
-  var nav=document.getElementById('nv');
-  if(nav){
-    var old=Array.prototype.find.call(nav.querySelectorAll('button'),function(b){
-      return b.textContent.indexOf('بازی و چالش')>=0;
-    });
-    addButton(nav,old,'sfdStoneMasterNav','💎 بازی Stone Master','اجرای بازی مستقل');
+  function bind(button,label,title){
+    if(!button || button.dataset.sfdGameBound==='1') return;
+    button.dataset.sfdGameBound='1';
+    button.removeAttribute('onclick');
+    button.onclick=null;
+    button.type='button';
+    button.textContent=label;
+    button.title=title;
+    button.addEventListener('click',openGame,true);
   }
-  var dock=document.getElementById('sfdMobileDock');
-  if(dock) addButton(dock,null,'sfdStoneMasterDock','🎮 Stone Master','ورود به بازی Stone Master');
+  function init(){
+    var nav=document.getElementById('nv');
+    if(nav){
+      var gameButton=Array.prototype.find.call(nav.querySelectorAll('button'),function(b){
+        return b.textContent.indexOf('بازی و چالش')>=0 || b.textContent.indexOf('Stone Master')>=0;
+      });
+      bind(gameButton,'💎 بازی و چالش · Stone Master','اجرای بازی در صفحه مستقل');
+    }
+    var dock=document.getElementById('sfdMobileDock');
+    if(dock){
+      var dockButton=Array.prototype.find.call(dock.querySelectorAll('button'),function(b){
+        return b.textContent.indexOf('Stone Master')>=0 || b.textContent.indexOf('بازی')>=0;
+      });
+      if(dockButton) bind(dockButton,'🎮 Stone Master','ورود به بازی');
+      else {
+        var b=document.createElement('button');b.type='button';b.textContent='🎮 Stone Master';b.title='ورود به بازی';
+        b.addEventListener('click',openGame,true);dock.appendChild(b);
+      }
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
 })();
 </script>
 
