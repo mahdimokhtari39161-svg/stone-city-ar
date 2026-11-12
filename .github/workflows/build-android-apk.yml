@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'stone-master.html'
       - 'manifest.webmanifest'
       - 'sw.js'
       - 'icons/**'
@@ -50,7 +51,7 @@ jobs:
       - name: Prepare web app
         run: |
           mkdir -p www
-          cp index.html manifest.webmanifest sw.js www/
+          cp index.html stone-master.html manifest.webmanifest sw.js www/
           cp -R icons www/icons
 
       - name: Install Capacitor
@@ -155,6 +156,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Stone-City-AR-Complete-HTML
-          path: index.html
+          path: |
+            index.html
+            stone-master.html
           if-no-files-found: error
           retention-days: 30
